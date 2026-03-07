@@ -1,0 +1,47 @@
+{
+  "name": "agent-wallet",
+  "version": "1.0.0",
+  "description": "Solana agent wallet - Backend Driven Terminal",
+  "main": "dist/server.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "dev": "ts-node -r tsconfig-paths/register src/server.ts",
+    "cli": "ts-node -r tsconfig-paths/register src/index.ts",
+    "web": "npm run dev"
+  },
+  "keywords": [
+    "solana",
+    "wallet",
+    "agent",
+    "money-glitch"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.32.1",
+    "@kamino-finance/klend-sdk": "^7.3.20",
+    "@marinade.finance/marinade-ts-sdk": "^5.0.18",
+    "@meteora-ag/dlmm": "^1.9.3",
+    "@orca-so/whirlpools": "^7.0.1",
+    "@solana/kit": "^5.5.1",
+    "@solana/spl-token": "^0.4.14",
+    "@solana/web3.js": "^1.98.4",
+    "@solendprotocol/solend-sdk": "^0.13.43",
+    "axios": "^1.13.6",
+    "bn.js": "^5.2.3",
+    "cors": "^2.8.6",
+    "dotenv": "^17.3.1",
+    "express": "^4.21.2",
+    "groq-sdk": "^0.37.0",
+    "tsconfig-paths": "^4.2.0"
+  },
+  "devDependencies": {
+    "@types/bn.js": "^5.2.0",
+    "@types/cors": "^2.8.19",
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.0.0",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.3"
+  }
+}

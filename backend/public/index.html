@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Money Glitch - Terminal</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --neon-green: #00ff41;
+      --neon-pink: #ff00ff;
+      --neon-cyan: #00ffff;
+      --neon-yellow: #fcee0a;
+      --bg-dark: #050505;
+      --bg-panel: #0a0a0c;
+    }
+
+    body {
+      font-family: 'Share Tech Mono', monospace;
+      background-color: var(--bg-dark);
+      color: var(--neon-green);
+      position: relative;
+      margin: 0;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Scanlines */
+    body::after {
+      content: " ";
+      display: block;
+      position: absolute;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: 0;
+      background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+      z-index: 1000;
+      background-size: 100% 2px, 3px 100%;
+      pointer-events: none;
+    }
+
+    * {
+      scrollbar-width: thin;
+      scrollbar-color: var(--neon-cyan) var(--bg-dark);
+    }
+
+    *::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    *::-webkit-scrollbar-track {
+      background: var(--bg-dark);
+      border-left: 1px solid var(--neon-cyan);
+    }
+
+    *::-webkit-scrollbar-thumb {
+      background: var(--neon-pink);
+    }
+
+    .message-enter {
+      animation: glitch-anim-msg 0.4s ease-out;
+    }
+
+    @keyframes glitch-anim-msg {
+      0% {
+        clip-path: inset(10% 0 80% 0);
+        transform: translate(-5px, 5px);
+      }
+
+      20% {
+        clip-path: inset(80% 0 5% 0);
+        transform: translate(5px, -5px);
+      }
+
+      40% {
+        clip-path: inset(40% 0 40% 0);
+        transform: translate(5px, 5px);
+      }
+
+      60% {
+        clip-path: inset(20% 0 60% 0);
+        transform: translate(-5px, -5px);
+      }
+
+      80% {
+        clip-path: inset(60% 0 20% 0);
+        transform: translate(5px, 5px);
+      }
+
+      100% {
+        clip-path: inset(0 0 0 0);
+        transform: translate(0);
+      }
+    }
+
+    .gradient-bg {
+      background: #000 !important;
+      border-bottom: 2px solid var(--neon-pink);
+      box-shadow: 0 0 15px var(--neon-pink);
+      color: var(--neon-pink) !important;
+      text-transform: uppercase;
+      letter-spacing: 2px;
+      position: relative;
+    }
+
+    .gradient-bg::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: repeating-linear-gradient(45deg, transparent, transparent 10px, rgba(255, 0, 255, 0.1) 10px, rgba(255, 0, 255, 0.1) 20px);
+      pointer-events: none;
+    }
+
+    .glitch-text {
+      position: relative;
+      color: var(--neon-cyan);
+      display: inline-block;
+    }
+
+    .glitch-text::before,
+    .glitch-text::after {
+      content: attr(data-text);
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background: transparent;
+    }
+
+    .glitch-text::before {
+      left: 2px;
+      text-shadow: -2px 0 var(--neon-pink);
+      clip-path: inset(24% 0 58% 0);
+      animation: glitch-anim-2 3s infinite linear alternate-reverse;
+    }
+
+    .glitch-text::after {
+      left: -2px;
+      text-shadow: -2px 0 var(--neon-yellow);
+      clip-path: inset(54% 0 7% 0);
+      animation: glitch-anim-2 2.5s infinite linear alternate-reverse;
+    }
+
+    @keyframes glitch-anim-2 {
+      0% {
+        clip-path: inset(20% 0 80% 0);
+        transform: translate(2px, 0);
+      }
+
+      20% {
+        clip-path: inset(60% 0 10% 0);
+        transform: translate(-2px, 0);
+      }
+
+      40% {
+        clip-path: inset(40% 0 50% 0);
+        transform: translate(2px, 0);
+      }
+
+      60% {
+        clip-path: inset(80% 0 5% 0);
+        transform: translate(-2px, 0);
+      }
+
+      80% {
+        clip-path: inset(10% 0 70% 0);
+        transform: translate(2px, 0);
+      }
+
+      100% {
+        clip-path: inset(30% 0 50% 0);
+        transform: translate(-2px, 0);
+      }
+    }
+
+    .main-container {
+      display: flex;
+      height: 100vh;
+      flex-direction: column;
+      position: relative;
+      z-index: 10;
+    }
+
+    .content-wrapper {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+    }
+
+    .sidebar {
+      width: 300px;
+      background: var(--bg-panel);
+      border-right: 2px solid var(--neon-cyan);
+      box-shadow: 5px 0 20px rgba(0, 255, 255, 0.1);
+      overflow-y: auto;
+      padding: 20px;
+    }
+
+    .chat-section {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: #020202;
+    }
+
+    .capability-card {
+      background: rgba(0, 255, 255, 0.05);
+      border: 1px solid var(--neon-cyan);
+      border-radius: 0;
+      padding: 16px;
+      margin-bottom: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .capability-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 50%;
+      height: 100%;
+      background: linear-gradient(to right, transparent, rgba(0, 255, 255, 0.3), transparent);
+      transform: skewX(-20deg);
+      transition: 0.5s;
+    }
+
+    .capability-card:hover::before {
+      left: 150%;
+    }
+
+    .capability-card:hover {
+      background: rgba(0, 255, 255, 0.15);
+      box-shadow: 0 0 15px var(--neon-cyan), inset 0 0 10px var(--neon-cyan);
+      transform: translateX(5px);
+      border-color: var(--neon-green);
+    }
+
+    .capability-card h3 {
+      font-weight: bold;
+      color: var(--neon-yellow);
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+
+    .capability-card p {
+      font-size: 13px;
+      color: var(--neon-green);
+      line-height: 1.4;
+    }
+
+    /* Overriding Tailwind & old classes for glitch design */
+    .bg-white {
+      background: var(--bg-panel) !important;
+      border: 1px solid var(--neon-cyan);
+      color: var(--neon-green) !important;
+    }
+
+    .bg-gray-50,
+    .bg-gray-100,
+    .bg-purple-50,
+    .bg-green-50,
+    .bg-cyan-50,
+    .bg-blue-50 {
+      background: #0a0a0c !important;
+      color: var(--neon-cyan) !important;
+      border: 1px solid var(--neon-cyan) !important;
+    }
+
+    .text-gray-900,
+    .text-gray-800,
+    .text-gray-700,
+    .text-gray-600 {
+      color: var(--neon-green) !important;
+    }
+
+    .bg-purple-600 {
+      background: var(--neon-pink) !important;
+      color: #000 !important;
+      border: 1px solid #fff;
+    }
+
+    .bg-gradient-to-r {
+      background: var(--bg-panel) !important;
+      border: 1px dashed var(--neon-yellow) !important;
+    }
+
+    input,
+    textarea {
+      background: rgba(0, 255, 65, 0.05) !important;
+      border: 1px solid var(--neon-green) !important;
+      color: var(--neon-green) !important;
+      border-radius: 0 !important;
+      font-family: 'Share Tech Mono', monospace;
+    }
+
+    input:focus,
+    textarea:focus {
+      box-shadow: 0 0 15px var(--neon-green) !important;
+      outline: none !important;
+      border-color: var(--neon-yellow) !important;
+    }
+
+    button {
+      border-radius: 0 !important;
+      font-family: 'Share Tech Mono', monospace;
+      text-transform: uppercase;
+      transition: all 0.2s;
+    }
+
+    /* Footer input section */
+    footer {
+      background: var(--bg-panel) !important;
+      border-top: 2px solid var(--neon-cyan) !important;
+    }
+
+    .shadow-lg {
+      box-shadow: none !important;
+    }
+
+    .rounded-lg,
+    .rounded-full {
+      border-radius: 0 !important;
+    }
+
+    #sendBtn {
+      background: transparent !important;
+      border: 1px solid var(--neon-pink) !important;
+      color: var(--neon-pink) !important;
+    }
+
+    #sendBtn:hover {
+      background: var(--neon-pink) !important;
+      color: #000 !important;
+      box-shadow: 0 0 20px var(--neon-pink) !important;
+    }
+
+    /* Modals */
+    #walletModal .bg-white,
+    #moneyGlitchModal .bg-white {
+      background: rgba(10, 10, 12, 0.95) !important;
+      border: 2px solid var(--neon-pink);
+      box-shadow: 0 0 30px rgba(255, 0, 255, 0.3);
+      backdrop-filter: blur(5px);
+    }
+
+    /* Icons overrides */
+    i.fas {
+      text-shadow: 0 0 5px currentColor;
+    }
+
+    .text-purple-600 {
+      color: var(--neon-pink) !important;
+    }
+
+    .text-blue-600 {
+      color: var(--neon-cyan) !important;
+    }
+
+    .text-green-600 {
+      color: var(--neon-green) !important;
+    }
+
+    .text-indigo-600 {
+      color: #8a2be2 !important;
+    }
+
+    .text-pink-600 {
+      color: var(--neon-pink) !important;
+    }
+
+    .text-orange-600 {
+      color: var(--neon-yellow) !important;
+    }
+
+    .text-red-600 {
+      color: #ff003c !important;
+    }
+
+    /* App.js generated elements targeting */
+    .bg-white.border {
+      border: 1px dashed var(--neon-cyan) !important;
+    }
+
+    .hover\:border-purple-500:hover {
+      border-color: var(--neon-pink) !important;
+      box-shadow: 0 0 10px var(--neon-pink);
+    }
+
+    /* Kill Switch Styling */
+    #killSwitchBtn {
+      background: #ff003c !important;
+      color: #fff !important;
+      border: 1px solid #fff !important;
+      box-shadow: 0 0 15px #ff003c;
+      animation: pulse-red 1s infinite alternate;
+    }
+
+    @keyframes pulse-red {
+      from {
+        box-shadow: 0 0 5px #ff003c;
+      }
+
+      to {
+        box-shadow: 0 0 20px #ff003c;
+      }
+    }
+  </style>
+</head>
+
+<body class="bg-gray-50">
+  <div class="main-container">
+    <!-- Header -->
+    <header class="gradient-bg text-white">
+      <div class="px-6 py-4 flex items-center justify-between">
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 border border-current flex items-center justify-center">
+            <i class="fas fa-bolt text-lg glitch-anim"></i>
+          </div>
+          <div>
+            <h1 class="text-2xl font-bold glitch-text" data-text="M0N3Y_GL1TCH">M0N3Y_GL1TCH</h1>
+            <p class="text-xs tracking-widest" style="color: var(--neon-green);">SYSTEM_SEC COMPROMISED // AI_ACTIVE</p>
+          </div>
+        </div>
+        <div class="flex items-center gap-3">
+          <button id="killSwitchBtn" onclick="stopMoneyGlitch()"
+            class="hidden px-4 py-2 transition flex items-center gap-2 font-bold">
+            <i class="fas fa-skull-crossbones"></i>
+            STOP_GLITCH
+          </button>
+          <button id="walletBtn"
+            class="border border-current px-4 py-2 transition flex items-center gap-2 hover:bg-white hover:text-black">
+            <i class="fas fa-terminal"></i>
+            <span id="walletInfo">CONNECTING...</span>
+          </button>
+        </div>
+      </div>
+    </header>
+
+    <!-- Wallet Info Modal -->
+    <div id="walletModal" class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50">
+      <div class="bg-white p-6 max-w-md w-full mx-4">
+        <div class="flex justify-between items-center mb-4 border-b border-dashed pb-2">
+          <h2 class="text-xl font-bold glitch-text" data-text="WALLET_DAT">WALLET_DAT</h2>
+          <button onclick="document.getElementById('walletModal').classList.add('hidden')" class="hover:text-red-500">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+        <div id="walletDetails" class="space-y-3 text-sm">
+          <div>
+            <p class="text-gray-600">SYS_ADDR</p>
+            <p id="publicKey" class="font-mono text-xs break-all p-2 bg-black border border-green-500">LOADING_SEQ...
+            </p>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="border border-dashed border-cyan-500 p-2">
+              <p>SOL_BAL</p>
+              <p id="solBalance" class="text-lg font-bold" style="color: var(--neon-cyan);">0.00</p>
+            </div>
+            <div class="border border-dashed border-pink-500 p-2">
+              <p>mSOL_BAL</p>
+              <p id="msolBalance" class="text-lg font-bold" style="color: var(--neon-pink);">0.00</p>
+            </div>
+          </div>
+          <div class="grid grid-cols-2 gap-3">
+            <div class="border border-dashed border-yellow-500 p-2">
+              <p>USDC_BAL</p>
+              <p id="usdcBalance" class="text-lg font-bold" style="color: var(--neon-yellow);">0.00</p>
+              <p class="text-[8px] opacity-70 break-all font-mono">4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU</p>
+            </div>
+            <div class="border border-dashed border-yellow-700 p-2">
+              <p>DEVUSDC_BAL</p>
+              <p id="devUsdcBalance" class="text-lg font-bold" style="color: #f59e0b;">0.00</p>
+              <p class="text-[8px] opacity-70 break-all font-mono">BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k</p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Money Glitch Drag & Drop Modal -->
+    <div id="moneyGlitchModal"
+      class="hidden fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 p-4">
+      <div class="bg-white p-6 max-w-2xl w-full max-h-[90vh] overflow-y-auto border border-red-500">
+        <div class="flex justify-between items-center mb-6">
+          <div>
+            <h2 class="text-2xl font-bold flex items-center gap-2 glitch-text" data-text="CHAIN_BUILDER">
+              <i class="fas fa-link text-red-600"></i>
+              CHAIN_BUILDER
+            </h2>
+            <p class="text-sm mt-1" style="color:var(--neon-yellow)">[WARNING: AUTONOMOUS LOOP POTENTIAL DETECTED]</p>
+          </div>
+          <button onclick="closeMoneyGlitchModal()" class="hover:text-red-500">
+            <i class="fas fa-times text-xl"></i>
+          </button>
+        </div>
+
+        <div class="grid grid-cols-2 gap-6">
+          <!-- Available Features (Left) -->
+          <div>
+            <h3 class="font-bold mb-3 uppercase" style="color:var(--neon-pink)">> MODULES</h3>
+            <div class="space-y-2">
+              <div class="feature-item p-3 cursor-move hover:shadow-md transition border border-dashed"
+                style="border-color:var(--neon-cyan);" draggable="true" ondragstart="dragStart(event, 'stake')">
+                <p class="font-semibold text-sm">💰 STK_PROTOCOL</p>
+                <p class="text-xs">Init Stake Sequence</p>
+              </div>
+              <div class="feature-item p-3 cursor-move hover:shadow-md transition border border-dashed"
+                style="border-color:var(--neon-green);" draggable="true" ondragstart="dragStart(event, 'trade')">
+                <p class="font-semibold text-sm">📈 TRD_ALGO</p>
+                <p class="text-xs">Execute Swap_0x</p>
+              </div>
+              <div class="feature-item p-3 cursor-move hover:shadow-md transition border border-dashed"
+                style="border-color:var(--neon-pink);" draggable="true" ondragstart="dragStart(event, 'liquidity')">
+                <p class="font-semibold text-sm">💧 LIQ_POOL</p>
+                <p class="text-xs">Inject Capital</p>
+              </div>
+              <div class="feature-item p-3 cursor-move hover:shadow-md transition border border-dashed"
+                style="border-color:var(--neon-yellow);" draggable="true" ondragstart="dragStart(event, 'airdrop')">
+                <p class="font-semibold text-sm">🎁 ARDRP_REQ</p>
+                <p class="text-xs">Extract Devnet Fnd</p>
+              </div>
+              <div class="feature-item p-3 cursor-move hover:shadow-md transition border border-dashed"
+                style="border-color:var(--neon-green);" draggable="true" ondragstart="dragStart(event, 'earn')">
+                <p class="font-semibold text-sm">🏦 YIELD_FAR</p>
+                <p class="text-xs">Kamino Lending</p>
+              </div>
+            </div>
+          </div>
+
+          <!-- Chain Builder (Right) -->
+          <div>
+            <h3 class="font-bold mb-3 uppercase" style="color:var(--neon-cyan)">> ACTIVE_CHAIN</h3>
+            <div id="chainBuilder" class="border border-dashed p-4 min-h-[300px] space-y-2 bg-black"
+              style="border-color:var(--neon-red);" ondrop="dropFeature(event)" ondragover="dragOver(event)">
+              <p class="text-sm text-center py-12 opacity-50">AWAITING_INPUT_BLOCKS...</p>
+            </div>
+            <div class="mt-4 flex gap-2">
+              <button onclick="clearChain()" class="flex-1 border px-4 py-2 transition hover:bg-white hover:text-black">
+                FLUSH_MEM
+              </button>
+              <button onclick="startChain()" class="flex-1 border px-4 py-2 transition font-semibold"
+                style="border-color:var(--neon-green); color:var(--neon-green); text-shadow:0 0 5px var(--neon-green);">
+                EXEC_LOOP
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Content Wrapper -->
+    <div class="content-wrapper">
+      <!-- Left Sidebar - Capabilities -->
+      <div class="sidebar">
+        <h2 class="text-lg font-bold mb-4 flex items-center gap-2 glitch-text" data-text="SYS_CAPS">
+          <i class="fas fa-layer-group text-purple-600"></i>
+          SYS_CAPS
+        </h2>
+
+        <!-- Money Glitch - Chain Features (TOP) -->
+        <div class="capability-card" onclick="quickAction('Start money glitch')">
+          <h3><i class="fas fa-infinity text-red-600"></i> OVERRIDE_LOOP</h3>
+          <p>Initialize recursive asset strategy. Unending autonomous execution.</p>
+        </div>
+
+        <!-- Staking -->
+        <div class="capability-card" onclick="quickAction('Stake SOL')">
+          <h3><i class="fas fa-arrow-up text-purple-600"></i> STAKE_SOL</h3>
+          <p>Lock asset [SOL]. Earn protocol yield index.</p>
+        </div>
+
+        <!-- Transfers -->
+        <div class="capability-card" onclick="quickAction('Send SOL')">
+          <h3><i class="fas fa-paper-plane text-blue-600"></i> SEND_TOKEN</h3>
+          <p>Send SOL to other wallet addresses</p>
+        </div>
+
+        <!-- Liquidity -->
+        <div class="capability-card" onclick="quickAction('Show pools')">
+          <h3><i class="fas fa-water text-cyan-600"></i> LIQUDITY_PROVIDER</h3>
+          <p>Deploy capital arrays into automated market makers.</p>
+        </div>
+
+        <!-- Trading -->
+        <div class="capability-card" onclick="quickAction('Start trading')">
+          <h3><i class="fas fa-chart-line text-green-600"></i> TRADE_TOKEN</h3>
+          <p>Algorithmic arbitrage and swapping engine.</p>
+        </div>
+
+        <!-- Balance Check -->
+        <div class="capability-card" onclick="quickAction('Check balance')">
+          <h3><i class="fas fa-eye text-indigo-600"></i> SCAN_BAL</h3>
+          <p>Poll network for current cryptographic holdings.</p>
+        </div>
+
+        <!-- Airdrop -->
+        <div class="capability-card" onclick="quickAction('Request airdrop')">
+          <h3><i class="fas fa-gift text-pink-600"></i> PING_FAUCET</h3>
+          <p>Request DEVNET test payload simulation.</p>
+        </div>
+
+        <!-- Earn -->
+        <div class="capability-card" onclick="quickAction('Start earning')">
+          <h3><i class="fas fa-piggy-bank text-green-600"></i> YIELD_EARNING</h3>
+          <p>Engage Kamino lending vectors for continuous compounding.</p>
+        </div>
+
+        <!-- Stats -->
+        <div class="capability-card" onclick="quickAction('Staking stats')">
+          <h3><i class="fas fa-chart-bar text-orange-600"></i> METRICS_DATA</h3>
+          <p>Load general ledger APY and TVL statistics.</p>
+        </div>
+      </div>
+
+      <!-- Right Side - Chat -->
+      <div class="chat-section">
+        <!-- Chat Messages -->
+        <main class="flex-1 overflow-y-auto px-6 py-6" id="chatContainer">
+          <div id="chatMessages" class="space-y-4">
+            <!-- Messages will be inserted here -->
+          </div>
+        </main>
+
+        <!-- Chat Input -->
+        <footer class="px-6 py-4 border-t" style="border-color:var(--neon-green)">
+          <div class="flex gap-3 mb-3">
+            <span class="flex items-center" style="color:var(--neon-green)">></span>
+            <input id="messageInput" type="text" placeholder="ENTER COMMAND..." class="flex-1 px-4 py-3"
+              onkeypress="handleKeyPress(event)">
+            <button id="sendBtn" onclick="sendMessage()" class="px-6 py-3 flex items-center gap-2">
+              <i class="fas fa-terminal"></i>
+              <span class="hidden sm:inline">EXEC</span>
+            </button>
+          </div>
+          <div id="suggestedActions" class="flex flex-wrap gap-2">
+            <button onclick="quickAction('Check my balance')"
+              class="text-xs border px-3 py-1 hover:bg-white hover:text-black transition">
+              [SCAN_BAL]
+            </button>
+            <button onclick="quickAction('Stake SOL')"
+              class="text-xs border px-3 py-1 hover:bg-white hover:text-black transition">
+              [STK_SOL]
+            </button>
+            <button onclick="quickAction('Staking stats')"
+              class="text-xs border px-3 py-1 hover:bg-white hover:text-black transition">
+              [METRICS]
+            </button>
+            <button onclick="quickAction('View pools')"
+              class="text-xs border px-3 py-1 hover:bg-white hover:text-black transition">
+              [L_POOLS]
+            </button>
+          </div>
+        </footer>
+      </div>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+
+</html>

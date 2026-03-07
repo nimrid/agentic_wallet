@@ -1,0 +1,17 @@
+node_modules/
+dist/
+*.log
+.env
+.DS_Store
+.next/
+
+# Solana wallet keypairs & state - never commit these
+*.json.enc
+*.encrypted.json
+*.json.bak
+.wallet*.json
+.spend_limits_state.json
+backend/.wallet*
+backend/.spend*
+backend/src/.wallet*
+backend/src/.spend*
