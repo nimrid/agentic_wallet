@@ -245,7 +245,8 @@ agent-wallet/
 │   ├── meteora-liquidity.md      # Meteora DLMM single-sided liquidity
 │   ├── orca-trading.md           # Orca Whirlpool trading loop setup
 │   ├── marinade-staking.md       # Marinade mSOL staking integration
-│   └── kamino-yield.md           # Kamino vault selection & deposits
+│   ├── kamino-yield.md           # Kamino vault selection & deposits
+│   └── transactions-signing.md  # SOL sends, token balances, airdrop
 ├── examples/
 │   └── money-glitch.md           # The autonomous loop logic in detail
 └── docs/

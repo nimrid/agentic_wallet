@@ -10,7 +10,7 @@ An **AI-powered, autonomous DeFi terminal** for the Solana blockchain. The agent
 
 | Feature | Protocol | Description |
 |---------|----------|-------------|
-| 🤖 **AI Intent Parsing** | Groq (Llama 3) | Natural language command processing |
+| 🤖 **AI Intent Parsing** | Groq (openai/gpt-oss-20b') | Natural language command processing |
 | 📈 **Autonomous Trading** | Orca Whirlpools | AI-advised SOL/devUSDC swap loop (30s intervals) |
 | 💧 **Liquidity Provision** | Meteora DLMM | Single-sided SOL deposits into top pools |
 | 🥩 **Liquid Staking** | Marinade Finance | AI-sized SOL → mSOL autonomous staking |
@@ -27,7 +27,7 @@ An **AI-powered, autonomous DeFi terminal** for the Solana blockchain. The agent
 - **Server**: Express.js
 - **UI**: Cyberpunk-themed HTML/CSS/JS terminal (served statically)
 - **Blockchain**: `@solana/web3.js`
-- **AI Engine**: Groq SDK (`llama3-8b-8192` / `mixtral`)
+- **AI Engine**: Groq SDK (`openai/gpt-oss-20b` / `openai/gpt-oss-120b`)
 - **DeFi SDKs**: `@meteora-ag/dlmm`, `@orca-so/whirlpools`, `@marinade.finance/marinade-ts-sdk`, `@kamino-finance/klend-sdk`
 
 ---
