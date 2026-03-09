@@ -1,0 +1,21 @@
+services:
+  - type: web
+    name: agent-wallet
+    env: node
+    plan: free # Change to 'starter' if using a Disk for persistence
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: node dist/server.js
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: GROQ_API_KEY
+        sync: false # Set manually in Dashboard
+      - key: WALLET_ENCRYPTION_KEY
+        sync: false # Set manually in Dashboard
+      - key: PORT
+        value: 10000
+    # disk: # Uncomment below if on a paid plan for persistence
+    #   name: agent-storage
+    #   mountPath: /opt/render/project/src/backend/wallets
+    #   sizeGB: 1

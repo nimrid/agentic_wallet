@@ -136,7 +136,7 @@ Once inside the terminal, type natural language commands. Here are the key ones:
 | Command | Action |
 |---------|--------|
 | `check balance` | Displays SOL, mSOL, USDC, and devUSDC balances |
-| `request airdrop` | AI agent decides whether to request devnet SOL |
+| `request airdrop` | AI agent decides whether to request devnet SOL. note your ip might be blocked if numerous calls or it may fail, get devnet SOL from: https://faucet.solana.com/ |
 | `stake` | AI calculates a safe amount and stakes with Marinade |
 | `unstake` | Unstakes your mSOL position |
 | `trade` / `start trading` | Starts the Orca SOL/USDC trading monitor |

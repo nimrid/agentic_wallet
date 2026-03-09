@@ -6,19 +6,33 @@ import * as dotenv from 'dotenv';
 
 dotenv.config();
 
-const WALLET_PATH = path.join(__dirname, '../.wallet.encrypted.json');
-const OLD_WALLET_PATH = path.join(__dirname, '../.wallet.json');
+// Wallets directory — each agent gets its own isolated encrypted key file
+const WALLETS_DIR = path.join(__dirname, '../wallets');
+
+// Ensure wallets directory exists
+if (!fs.existsSync(WALLETS_DIR)) {
+  fs.mkdirSync(WALLETS_DIR, { recursive: true });
+}
+
+function getWalletPath(agentId: string): string {
+  // Sanitize agentId to prevent directory traversal
+  const safe = agentId.replace(/[^a-zA-Z0-9_-]/g, '_');
+  return path.join(WALLETS_DIR, `${safe}.encrypted.json`);
+}
 
 // Generate or retrieve the encryption key
 const getEncryptionKey = (): Buffer => {
   const envKey = process.env.WALLET_ENCRYPTION_KEY;
   if (!envKey) {
-    console.warn('⚠️ WALLET_ENCRYPTION_KEY not found in environment. Using insecure fallback key (NOT SAFE FOR MAINNET!)');
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('WALLET_ENCRYPTION_KEY is required in production. Set it in your .env file.');
+    }
+    console.warn('⚠️  WALLET_ENCRYPTION_KEY not set. Using insecure dev fallback — NOT SAFE FOR MAINNET!');
   }
   return crypto.scryptSync(envKey || 'default-insecure-key-agent', 'wallet-salt', 32);
 };
 
-// Encrypt the wallet secret
+// Encrypt the wallet secret key using AES-256-GCM (authenticated encryption)
 const encryptWallet = (secretKey: Uint8Array): string => {
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv('aes-256-gcm', getEncryptionKey(), iv);
@@ -33,7 +47,7 @@ const encryptWallet = (secretKey: Uint8Array): string => {
   }, null, 2);
 };
 
-// Decrypt the wallet secret
+// Decrypt the wallet secret key
 const decryptWallet = (encryptedJson: string): Uint8Array => {
   const data = JSON.parse(encryptedJson);
   const iv = Buffer.from(data.iv, 'hex');
@@ -47,37 +61,60 @@ const decryptWallet = (encryptedJson: string): Uint8Array => {
   return new Uint8Array(decrypted);
 };
 
-export async function loadOrCreateWallet(onNewWallet?: (address: string) => Promise<void>): Promise<Keypair> {
-  // Migration Check: If old unencrypted wallet exists, we should migrate it
-  if (fs.existsSync(OLD_WALLET_PATH) && !fs.existsSync(WALLET_PATH)) {
-    console.log('🔄 Migrating unencrypted wallet to encrypted storage...');
-    const oldData = fs.readFileSync(OLD_WALLET_PATH, 'utf-8');
-    const secretKey = Uint8Array.from(JSON.parse(oldData));
+/**
+ * Loads an existing wallet for a given agent, or creates a new one.
+ * Each agent has its own isolated encrypted key file: wallets/{agentId}.encrypted.json
+ */
+export async function loadOrCreateWallet(
+  agentId: string,
+  onNewWallet?: (address: string) => Promise<void>
+): Promise<Keypair> {
+  const walletPath = getWalletPath(agentId);
 
-    fs.writeFileSync(WALLET_PATH, encryptWallet(secretKey));
-    fs.renameSync(OLD_WALLET_PATH, OLD_WALLET_PATH + '.bak');
-    console.log('✅ Migration complete (.wallet.json -> .wallet.encrypted.json)');
+  // One-time migration: if old unencrypted flat file exists and this is the 'default' agent
+  const legacyPath = path.join(__dirname, '../.wallet.json');
+  const legacyEncPath = path.join(__dirname, '../.wallet.encrypted.json');
+
+  if (agentId === 'default' && !fs.existsSync(walletPath)) {
+    if (fs.existsSync(legacyEncPath)) {
+      console.log(`🔄 [${agentId}] Migrating legacy .wallet.encrypted.json → wallets/default.encrypted.json`);
+      fs.copyFileSync(legacyEncPath, walletPath);
+    } else if (fs.existsSync(legacyPath)) {
+      console.log(`🔄 [${agentId}] Migrating plaintext .wallet.json → encrypted wallets/default.encrypted.json`);
+      const secretKey = Uint8Array.from(JSON.parse(fs.readFileSync(legacyPath, 'utf-8')));
+      fs.writeFileSync(walletPath, encryptWallet(secretKey));
+      fs.renameSync(legacyPath, legacyPath + '.bak');
+    }
   }
 
-  if (fs.existsSync(WALLET_PATH)) {
+  if (fs.existsSync(walletPath)) {
     try {
-      const encryptedData = fs.readFileSync(WALLET_PATH, 'utf-8');
+      const encryptedData = fs.readFileSync(walletPath, 'utf-8');
       const secretKey = decryptWallet(encryptedData);
-      console.log('🔒 Loaded ENCRYPTED existing wallet');
+      console.log(`🔒 [${agentId}] Loaded encrypted wallet from wallets/${agentId}.encrypted.json`);
       return Keypair.fromSecretKey(secretKey);
     } catch (error) {
-      console.error('❌ Failed to decrypt wallet! Check your WALLET_ENCRYPTION_KEY.');
+      console.error(`❌ [${agentId}] Failed to decrypt wallet! Check your WALLET_ENCRYPTION_KEY.`);
       throw error;
     }
   }
 
+  // Create a brand-new wallet for this agent
   const wallet = Keypair.generate();
-  fs.writeFileSync(WALLET_PATH, encryptWallet(wallet.secretKey));
-  console.log('🔐 Created new ENCRYPTED wallet:', wallet.publicKey.toString());
+  fs.writeFileSync(walletPath, encryptWallet(wallet.secretKey));
+  console.log(`🔐 [${agentId}] Created new encrypted wallet: ${wallet.publicKey.toString()}`);
 
   if (onNewWallet) {
     await onNewWallet(wallet.publicKey.toString());
   }
 
   return wallet;
+}
+
+/** Returns a list of all registered agent IDs (based on wallet files). */
+export function listAgents(): string[] {
+  if (!fs.existsSync(WALLETS_DIR)) return [];
+  return fs.readdirSync(WALLETS_DIR)
+    .filter(f => f.endsWith('.encrypted.json'))
+    .map(f => f.replace('.encrypted.json', ''));
 }

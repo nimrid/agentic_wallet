@@ -45,13 +45,13 @@ export class WalletController {
                 });
             }
 
-            const limitCheck = checkSpendLimits(amount);
+            const limitCheck = checkSpendLimits(amount, this.state.agentId);
             if (!limitCheck.allowed) {
                 return res.status(400).json({ error: limitCheck.reason });
             }
 
             const signature = await sendSol(this.state.connection, this.state.wallet, recipient, amount);
-            recordSpend(amount);
+            recordSpend(amount, this.state.agentId);
             const newBalance = await getBalance(this.state.connection, this.state.wallet.publicKey);
 
             res.json({
@@ -129,7 +129,7 @@ Respond with ONLY:
     saveRecurring = async (req: Request, res: Response) => {
         try {
             const transfer = req.body;
-            const result = addRecurringTransfer(transfer);
+            const result = addRecurringTransfer(this.state.agentId, transfer);
             res.json({ success: true, transfer: result });
         } catch (error) {
             res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
@@ -138,7 +138,7 @@ Respond with ONLY:
 
     getRecurring = async (req: Request, res: Response) => {
         try {
-            const transfers = getRecurringTransfers();
+            const transfers = getRecurringTransfers(this.state.agentId);
             res.json({ success: true, transfers });
         } catch (error) {
             res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
@@ -148,7 +148,7 @@ Respond with ONLY:
     deleteRecurring = async (req: Request, res: Response) => {
         try {
             const { id } = req.body;
-            const success = removeRecurringTransfer(id);
+            const success = removeRecurringTransfer(this.state.agentId, id);
             res.json({ success });
         } catch (error) {
             res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
