@@ -110,7 +110,7 @@ export class SolanaTrader {
       const response = await fetch(
         'https://api.coingecko.com/api/v3/simple/price?ids=solana&vs_currencies=usd'
       );
-      const data = await response.json();
+      const data = await response.json() as { solana: { usd: number } };
       return data.solana.usd;
     } catch (error) {
       console.error('Error fetching real SOL price:', error);
