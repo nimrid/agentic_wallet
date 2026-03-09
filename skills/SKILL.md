@@ -11,7 +11,7 @@ Agent Wallet provides a comprehensive suite of AI-driven DeFi agents on Solana:
 - **Automated Trading (`SolanaTrader`)**: Interval-based trading agent on Orca Whirlpools.
 - **Smart Liquidity (`Meteora DLMM`)**: Single-sided SOL liquidity provision guided by AI sizing.
 - **Liquid Staking (`Marinade`)**: Autonomous calculation of ideal stake amounts using mSOL integrations.
-- **Yield Farming (`Kamino`)**: AI-guided analysis and vault selection.
+- **Yield Farming (`Solend`)**: AI-guided analysis and vault selection.
 - **The Money Glitch**: Recursive, sequential autonomous loop (Stake -> Trade -> Liquidity) with built-in safety limits.
 
 ## Quick Start
@@ -23,7 +23,7 @@ cd agent-wallet/backend
 npm install
 
 # Required dependencies overview
-npm install @solana/web3.js @meteora-ag/dlmm @orca-so/whirlpools @marinade.finance/marinade-ts-sdk @kamino-finance/klend-sdk groq-sdk
+npm install @solana/web3.js @meteora-ag/dlmm @orca-so/whirlpools @marinade.finance/marinade-ts-sdk @solendprotocol/solend-sdk groq-sdk
 ```
 
 ### Environment Setup
@@ -44,7 +44,7 @@ The ecosystem revolves around Express.js serving the `AppState` to feature contr
 | `AgentChat` | Groq LLM integration; prompts AI for decisions (`getAISolAmount`, `getStakingAmount`) |
 | `SolanaTrader` | Background worker that checks Orca SOL/USDC pool and executes AI-advised trades |
 | `WalletController` | Airdrops, balances, SOL transfers |
-| `checkSpendLimits` | Global safety module. Rejects any transaction > 2 SOL, or > 5 SOL/day |
+| `checkSpendLimits` | Global safety module. Rejects any transaction > 2 SOL, or > 10 SOL/day |
 
 ---
 
@@ -154,9 +154,9 @@ async function executeStake(connection: Connection, wallet: Keypair, amount: num
 
 ---
 
-## 5. Kamino Yield Farming
+## 5. Solend Yield Earning
 
-Identify best Kamino reserves and deposit assets.
+Identify best Solend reserves and deposit assets.
 
 ### Select Best Vault & Deposit
 ```typescript
@@ -164,12 +164,12 @@ import { getAvailableVaults, selectBestVault, depositToVault } from '@features/e
 
 // Ask AI to pick highest APY vault
 const allVaults = await getAvailableVaults(connection);
-const bestVault = await selectBestVault(chatModel, allVaults);
+const bestVault = await selectBestVault(chatModel, allVaults, wallet.publicKey, connection);
 
 const result = await depositToVault(
   connection, 
   wallet, 
-  bestVault.address, 
+  bestVault, 
   0.5 // Amount
 );
 ```
@@ -239,17 +239,13 @@ This skill directory provides deeper context for specific agent workflows:
 ```text
 agent-wallet/
 ├── SKILL.md                        # This file (System Overview)
-├── resources/
-│   ├── ai-tools.md               # Groq LLM prompts & intent parser
-│   ├── spend-limits.md           # Security parameters & enforcement
-│   ├── meteora-liquidity.md      # Meteora DLMM single-sided liquidity
-│   ├── orca-trading.md           # Orca Whirlpool trading loop setup
-│   ├── marinade-staking.md       # Marinade mSOL staking integration
-│   ├── kamino-yield.md           # Kamino vault selection & deposits
-│   └── transactions-signing.md  # SOL sends, token balances, airdrop
-├── examples/
-│   └── money-glitch.md           # The autonomous loop logic in detail
-└── docs/
-    ├── terminal-ui.md            # Backend-driven terminal setup
-    └── state-management.md       # Express AppState design
+└── resources/
+    ├── ai-tools.md               # Groq LLM prompts & intent parser
+    ├── spend-limits.md           # Security parameters & enforcement
+    ├── meteora-liquidity.md      # Meteora DLMM single-sided liquidity
+    ├── orca-trading.md           # Orca Whirlpool trading loop setup
+    ├── marinade-staking.md       # Marinade mSOL staking integration
+    ├── solend.md                 # Solend vault selection & deposits
+    ├── transactions-signing.md  # SOL sends, token balances, airdrop
+    └── money-glitch.md           # The autonomous loop logic in detail
 ```

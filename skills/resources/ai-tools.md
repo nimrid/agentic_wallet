@@ -11,7 +11,7 @@ The `AgentChat` class powers the natural language interaction of the Wallet, ana
 - **`getStakingAmount(agent, solBal)`**: Marinade Action.
   - Ensures a buffer is kept (gas/base transactions). Max allowed is calculated.
 
-- **`getAIDepositAmount(agent, vaultSym, solBal)`**: Yield Action.
+- **`getAIDepositAmountForReserve(agent, reserveSym, solBal)`**: Yield Action.
   - Prompt structure defines typical deposits between `0.1 and 1 SOL`.
 
 - **`getAITradingDecision(agent, price, avgPrice, ...)`**: Orca Trading logic.
@@ -21,7 +21,7 @@ The `AgentChat` class powers the natural language interaction of the Wallet, ana
 ### The Chat Controller Intent Parser
 `src/controllers/ChatController.ts` takes raw string commands and maps them to a specific system action:
 
-- **"Earn/Yield"**: Fetches Kamino `topVaults()`.
+- **"Earn/Yield"**: Fetches Solend `getAvailableVaults()`.
 - **"Liquidity/Pool"**: Returns `getPoolsForDisplay()`.
 - **"Money Glitch"**: Sends standard recursive loop response and reveals the Kill Switch.
 - **"Stake"**: Suggests a Marinade interaction.

@@ -5,6 +5,7 @@ import { getMSolBalance } from '@features/staking';
 import { requestDevnetAirdrop } from '@core/airdrop';
 import { checkAndAirdropIfLow } from '@features/agentTools';
 import { checkSpendLimits, recordSpend } from '@core/spendLimits';
+import { addRecurringTransfer, getRecurringTransfers, removeRecurringTransfer } from '@core/recurring';
 import { AppState } from '../types';
 
 const USDC_MINT = '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU'; // Circle Devnet USDC
@@ -120,6 +121,35 @@ Respond with ONLY:
                 agentDecision: result.agentDecision,
                 message: result.agentDecision
             });
+        } catch (error) {
+            res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+        }
+    };
+
+    saveRecurring = async (req: Request, res: Response) => {
+        try {
+            const transfer = req.body;
+            const result = addRecurringTransfer(transfer);
+            res.json({ success: true, transfer: result });
+        } catch (error) {
+            res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+        }
+    };
+
+    getRecurring = async (req: Request, res: Response) => {
+        try {
+            const transfers = getRecurringTransfers();
+            res.json({ success: true, transfers });
+        } catch (error) {
+            res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
+        }
+    };
+
+    deleteRecurring = async (req: Request, res: Response) => {
+        try {
+            const { id } = req.body;
+            const success = removeRecurringTransfer(id);
+            res.json({ success });
         } catch (error) {
             res.status(500).json({ error: error instanceof Error ? error.message : 'Unknown error' });
         }

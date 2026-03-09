@@ -14,10 +14,10 @@ An **AI-powered, autonomous DeFi terminal** for the Solana blockchain. The agent
 | 📈 **Autonomous Trading** | Orca Whirlpools | AI-advised SOL/devUSDC swap loop (30s intervals) |
 | 💧 **Liquidity Provision** | Meteora DLMM | Single-sided SOL deposits into top pools |
 | 🥩 **Liquid Staking** | Marinade Finance | AI-sized SOL → mSOL autonomous staking |
-| 🏦 **Yield Farming** | Kamino Finance | AI vault selection for lending/earning yields |
+| 🏦 **Yield Farming** | Solend | AI vault selection for lending/earning yields |
 | 🔄 **Money Glitch Mode** | All Protocols | Recursive autonomous loop chaining every DeFi action |
 | 🛑 **Kill Switch** | Browser UI | One-click emergency stop for the autonomous loop |
-| 🔒 **Spend Limits** | Built-in | Hard caps: 2 SOL/tx, 5 SOL/day |
+| 🔒 **Spend Limits** | Built-in | Hard caps: 2 SOL/tx, 10 SOL/day |
 
 ---
 
@@ -28,7 +28,7 @@ An **AI-powered, autonomous DeFi terminal** for the Solana blockchain. The agent
 - **UI**: Cyberpunk-themed HTML/CSS/JS terminal (served statically)
 - **Blockchain**: `@solana/web3.js`
 - **AI Engine**: Groq SDK (`openai/gpt-oss-20b` / `openai/gpt-oss-120b`)
-- **DeFi SDKs**: `@meteora-ag/dlmm`, `@orca-so/whirlpools`, `@marinade.finance/marinade-ts-sdk`, `@kamino-finance/klend-sdk`
+- **DeFi SDKs**: `@meteora-ag/dlmm`, `@orca-so/whirlpools`, `@marinade.finance/marinade-ts-sdk`, `@solendprotocol/solend-sdk`
 
 ---
 
@@ -44,7 +44,7 @@ agent-wallet/
 │   │   ├── meteora-liquidity.md
 │   │   ├── orca-trading.md
 │   │   ├── marinade-staking.md
-│   │   ├── kamino-yield.md
+│   │   ├── solend.md
 │   │   ├── ai-tools.md
 │   │   └── spend-limits.md
 │   └── examples/
@@ -57,12 +57,12 @@ agent-wallet/
     │   │   ├── wallet.ts             # Keypair generation & encrypted storage
     │   │   ├── transaction.ts        # SOL transfers, token balance checks
     │   │   ├── airdrop.ts            # Devnet SOL airdrop
-    │   │   └── spendLimits.ts        # 2 SOL/tx + 5 SOL/day safety engine
+    │   │   └── spendLimits.ts        # 2 SOL/tx + 10 SOL/day safety engine
     │   ├── features/
     │   │   ├── trading.ts            # SolanaTrader (Orca Whirlpools)
     │   │   ├── staking.ts            # Marinade liquid staking
     │   │   ├── liquidity.ts          # Meteora DLMM spot strategy
-    │   │   ├── earn.ts               # Kamino vault deposits
+    │   │   ├── earn.ts               # Solend reserve deposits
     │   │   └── agentTools.ts         # AI sizing & decision functions
     │   ├── services/
     │   │   └── chat.ts               # AgentChat (Groq SDK wrapper)
@@ -141,7 +141,7 @@ Once inside the terminal, type natural language commands. Here are the key ones:
 | `unstake` | Unstakes your mSOL position |
 | `trade` / `start trading` | Starts the Orca SOL/USDC trading monitor |
 | `liquidity` / `pool` | Finds the best Meteora pool and provides liquidity |
-| `earn` / `yield` | AI picks the best Kamino vault and deposits |
+| `earn` / `yield` | AI picks the best Solend reserve and deposits |
 | `send SOL` | Transfer SOL to another wallet address |
 | `money glitch` | 🔥 Activates the autonomous recursive DeFi loop |
 
@@ -154,7 +154,7 @@ The wallet has two layers of protection against rogue AI decisions:
 ### 1. On-Chain Spend Limits (`core/spendLimits.ts`)
 Every single DeFi transaction is checked **before** it executes:
 - **Max per transaction**: `2.0 SOL`
-- **Daily max**: `5.0 SOL`
+- **Daily max**: `10.0 SOL`
 
 ```typescript
 // Every controller does this before signing:
@@ -201,8 +201,8 @@ The backend exposes a REST API for all wallet operations:
 ### Earning
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/api/earn/reserves` | List available Kamino reserves |
-| `POST` | `/api/earn/deposit` | AI-guided deposit into best vault |
+| `GET` | `/api/earn/reserves` | List available Solend reserves |
+| `POST` | `/api/earn/deposit` | AI-guided deposit into best reserve |
 | `GET` | `/api/earn/stats` | Overall earning statistics |
 
 ### Chat (AI Intent)
@@ -218,7 +218,7 @@ The AI engine (`AgentChat` using Groq) is embedded at every decision point:
 
 1. **Sizing**: Before any DeFi action, the AI is given the current balance and a maximum allowed amount. It responds with an exact SOL figure.
 2. **Trading**: The trader sends current price, average price, price change %, and balances. AI responds with exactly one word: `buy`, `sell`, or `hold`.
-3. **Vault Selection**: For Kamino, the AI is given a ranked list of vaults by APY and picks the best-fit one by index.
+3. **Reserve Selection**: For Solend, the AI is given a ranked list of reserves by APY and picks the best-fit one by index.
 
 All AI prompts enforce the **2.0 SOL maximum** at the prompt level, in addition to the hard-coded `spendLimits.ts` check.
 

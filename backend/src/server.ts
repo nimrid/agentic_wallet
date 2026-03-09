@@ -5,6 +5,7 @@ import { Connection, Keypair } from '@solana/web3.js';
 import { AgentChat } from '@services/chat';
 import { loadOrCreateWallet } from '@core/wallet';
 import { airdropOnNewWallet } from '@features/agentTools';
+import { processRecurringTransfers } from '@core/recurring';
 import { SolanaTrader } from '@features/trading';
 import * as dotenv from 'dotenv';
 
@@ -78,23 +79,6 @@ async function initialize() {
   app.use('/api/earn', createEarnRouter(state));
   app.use('/api/chat', createChatRouter(state));
 
-  // Legacy route support (Compatibility with existing frontend)
-  // We use direct mapping to avoid 307 redirects for simple API calls
-  const walletRouter = createWalletRouter(state);
-  const stakingRouter = createStakingRouter(state);
-  const liquidityRouter = createLiquidityRouter(state);
-
-  const walletController = new WalletController(state);
-  app.post('/api/send-sol', walletController.sendSol);
-  app.post('/api/airdrop', walletController.requestAirdrop);
-  app.post('/api/check-and-airdrop', walletController.checkAndAirdrop);
-
-  // For specific legacy endpoints that don't match the new router structure prefixes
-  app.get('/api/staking-stats', (req, res) => res.redirect('/api/staking/stats'));
-  app.get('/api/pools', (req, res) => res.redirect('/api/liquidity/pools'));
-  app.post('/api/stake', (req, res) => res.redirect(307, '/api/staking/stake'));
-  app.post('/api/unstake', (req, res) => res.redirect(307, '/api/staking/unstake'));
-
   // Error Handler
   app.use(errorHandler);
 
@@ -102,6 +86,15 @@ async function initialize() {
   app.get('*', (req, res) => {
     res.sendFile(path.join(__dirname, '../public/index.html'));
   });
+
+  // Start background services
+  setInterval(async () => {
+    try {
+      await processRecurringTransfers(connection, wallet);
+    } catch (error) {
+      console.error('Error processing recurring transfers:', error);
+    }
+  }, 60000); // Check every minute
 }
 
 // Start server

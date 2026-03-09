@@ -8,7 +8,7 @@ export interface SecurityConfig {
 
 // Default safety limits
 const DEFAULT_CONFIG: SecurityConfig = {
-    dailySpendLimit: 5.0, // 5 SOL per day
+    dailySpendLimit: 10.0, // 10 SOL per day
     maxSpendPerTx: 2.0,   // 2 SOL per transaction
 };
 

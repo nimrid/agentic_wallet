@@ -5,7 +5,7 @@ The `SpendLimits` module (`core/spendLimits.ts`) is the primary defense against 
 ### Protocol Parameters
 
 - **`MAX_SPEND_PER_TX`**: `2.0 SOL`
-- **`DAILY_SPEND_LIMIT`**: `5.0 SOL`
+- **`DAILY_SPEND_LIMIT`**: `10.0 SOL`
 
 ### Core Functions
 

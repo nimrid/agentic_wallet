@@ -194,6 +194,48 @@ function addSystemMessage(text) {
   scrollToBottom();
 }
 
+// Show follow-up options after completing a DeFi action
+function showFollowUpMenu(completedLabel) {
+  const messagesDiv = document.getElementById('chatMessages');
+  const containerEl = document.createElement('div');
+  containerEl.className = 'message-enter flex justify-start';
+
+  const allOptions = [
+    { label: 'Stake', cmd: 'stake SOL with Marinade' },
+    { label: 'Unstake', cmd: 'unstake mSOL' },
+    { label: 'Liquidity', cmd: 'provide liquidity to a pool' },
+    { label: 'Trade', cmd: 'start trading SOL/USDC' },
+    { label: 'Earn', cmd: 'earn yield on Solend' },
+    { label: 'Send', cmd: 'send SOL to a wallet' },
+    { label: 'Glitch', cmd: 'money glitch' },
+  ];
+
+  // Filter out the action that was just done
+  const filtered = allOptions.filter(o =>
+    !o.label.toLowerCase().includes((completedLabel || '').toLowerCase())
+  );
+
+  const chipsHtml = filtered.map(opt =>
+    `<button onclick="quickAction('${opt.cmd}')" ` +
+    `style="background:#111827;border:1px solid #7c3aed;color:#4ade80;` +
+    `padding:4px 12px;border-radius:9999px;font-size:11px;font-family:monospace;` +
+    `cursor:pointer;white-space:nowrap;transition:background 0.2s;" ` +
+    `onmouseover="this.style.background='#7c3aed'" ` +
+    `onmouseout="this.style.background='#111827'">` +
+    `${opt.label}</button>`
+  ).join('');
+
+  containerEl.innerHTML =
+    `<div style="background:#0d1117;border:1px solid #374151;padding:12px 16px;` +
+    `border-radius:8px;max-width:360px;">` +
+    `<p style="font-size:11px;color:#6b7280;font-family:monospace;margin-bottom:8px;">` +
+    `// AGENT READY — next operation?</p>` +
+    `<div style="display:flex;flex-wrap:wrap;gap:6px;">${chipsHtml}</div></div>`;
+
+  messagesDiv.appendChild(containerEl);
+  scrollToBottom();
+}
+
 // Add action buttons
 function addActionButtons(buttons) {
   const messagesDiv = document.getElementById('chatMessages');
@@ -266,7 +308,7 @@ function addPoolButtons(pools) {
 async function confirmStake(amount) {
   isLoading = true;
   try {
-    const response = await fetch('/api/stake', {
+    const response = await fetch('/api/staking/stake', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount })
@@ -276,6 +318,7 @@ async function confirmStake(amount) {
     if (data.success) {
       addBotMessage(`✅ ${data.message}\nTransaction: ${data.signature.substring(0, 20)}...`);
       loadWalletInfo();
+      showFollowUpMenu('Stake');
     } else {
       addBotMessage(`❌ Error: ${data.error}`);
     }
@@ -291,7 +334,7 @@ async function confirmStake(amount) {
 async function confirmAirdrop() {
   isLoading = true;
   try {
-    const response = await fetch('/api/airdrop', {
+    const response = await fetch('/api/wallet/airdrop', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({})
@@ -301,6 +344,7 @@ async function confirmAirdrop() {
     if (data.success) {
       addBotMessage(`✅ ${data.message}\nAgent Decision: ${data.agentDecision}\nTransaction: ${data.signature ? data.signature.substring(0, 20) + '...' : 'Pending'}`);
       loadWalletInfo();
+      showFollowUpMenu('');
     } else {
       addBotMessage(`❌ ${data.message}\nAgent Decision: ${data.agentDecision}`);
     }
@@ -322,7 +366,7 @@ async function confirmUnstake() {
 
   isLoading = true;
   try {
-    const response = await fetch('/api/unstake', {
+    const response = await fetch('/api/staking/unstake', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ amount })
@@ -332,6 +376,7 @@ async function confirmUnstake() {
     if (data.success) {
       addBotMessage(`✅ ${data.message}\nTransaction: ${data.signature.substring(0, 20)}...`);
       loadWalletInfo();
+      showFollowUpMenu('Unstake');
     } else {
       addBotMessage(`❌ Error: ${data.error}`);
     }
@@ -355,7 +400,7 @@ async function confirmSend() {
 
   isLoading = true;
   try {
-    const response = await fetch('/api/send-sol', {
+    const response = await fetch('/api/wallet/send-sol', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ recipient, amount })
@@ -365,6 +410,7 @@ async function confirmSend() {
     if (data.success) {
       addBotMessage(`✅ ${data.message}\nTransaction: ${data.signature.substring(0, 20)}...`);
       loadWalletInfo();
+      showFollowUpMenu('Send');
     } else {
       addBotMessage(`❌ Error: ${data.error}`);
     }
@@ -410,23 +456,36 @@ function askRecurringTransfer(recipient, amount) {
 
 // Setup recurring transfer schedule
 async function setupRecurring(recipient, amount, frequency) {
-  let recurringSchedule = JSON.parse(localStorage.getItem('recurring_transfers') || '[]');
-
   const d = new Date();
   if (frequency === 'daily') d.setDate(d.getDate() + 1);
   if (frequency === 'weekly') d.setDate(d.getDate() + 7);
   if (frequency === 'monthly') d.setMonth(d.getMonth() + 1);
 
-  recurringSchedule.push({
+  const transfer = {
     recipient,
     amount,
     frequency,
     nextRunDate: d.toISOString(),
     createdAt: new Date().toISOString()
-  });
+  };
 
-  localStorage.setItem('recurring_transfers', JSON.stringify(recurringSchedule));
-  addBotMessage(`🔄 Scheduled a **${frequency}** recurring transfer of ${amount} SOL to this beneficiary.`);
+  try {
+    const response = await fetch('/api/wallet/recurring', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(transfer)
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      addBotMessage(`🔄 Scheduled a **${frequency}** recurring transfer of ${amount} SOL to this beneficiary.`);
+    } else {
+      addBotMessage('❌ Failed to schedule recurring transfer.');
+    }
+  } catch (error) {
+    console.error('Error scheduling recurring transfer:', error);
+    addBotMessage('❌ Error scheduling recurring transfer on server.');
+  }
 
   await saveBeneficiaryAndSend(recipient, amount);
 }
@@ -458,7 +517,7 @@ async function autoSendTransaction(recipient, amount) {
   try {
     addBotMessage('🚀 Sending transaction...');
 
-    const response = await fetch('/api/send-sol', {
+    const response = await fetch('/api/wallet/send-sol', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ recipient, amount })
@@ -468,6 +527,7 @@ async function autoSendTransaction(recipient, amount) {
     if (data.success) {
       addBotMessage(`✅ Transaction successful!\n📤 Sent ${amount} SOL to ${recipient.substring(0, 20)}...\n🔗 Signature: ${data.signature ? data.signature.substring(0, 20) + '...' : 'Pending'}`);
       loadWalletInfo();
+      showFollowUpMenu('Send');
     } else {
       addBotMessage(`❌ Transaction failed: ${data.error}`);
     }
@@ -663,6 +723,7 @@ async function provideAutonomousLiquidity() {
       addBotMessage(`🤖 AI Decision: ${data.agentDecision}`);
       addBotMessage(`📍 Pool: ${data.pool}\n💰 Amount: ${data.amount} SOL\n🔗 Signature: ${data.signature ? data.signature.substring(0, 20) + '...' : 'Pending'}`);
       loadWalletInfo();
+      showFollowUpMenu('Liquidity');
     } else {
       addBotMessage(`❌ Error: ${data.error}`);
     }
@@ -886,7 +947,7 @@ function displayReserves(reserves) {
 async function startEarning() {
   isLoading = true;
   try {
-    addBotMessage('🤖 AI agent analyzing all Kamino reserves to select the best one...');
+    addBotMessage('🤖 AI agent analyzing all Solend reserves to select the best one...');
 
     const response = await fetch('/api/earn/deposit', {
       method: 'POST',
@@ -898,8 +959,9 @@ async function startEarning() {
     if (data.success) {
       addBotMessage(`✅ ${data.message}`);
       addBotMessage(`🤖 AI Decision: ${data.agentDecision}`);
-      addBotMessage(`📊 Reserve: ${data.reserve}\n💰 Amount: ${data.amount} SOL\n📈 APY: ${data.apy}%\n🔗 Signature: ${data.signature ? data.signature.substring(0, 20) + '...' : 'Pending'}`);
+      addBotMessage(`📊 Reserve: ${data.reserve}\n💰 Amount: ${data.amount} ${data.token}\n📈 APY: ${data.apy}%\n🔗 Signature: ${data.signature ? data.signature.substring(0, 20) + '...' : 'Pending'}`);
       loadWalletInfo();
+      showFollowUpMenu('Earn');
     } else {
       addBotMessage(`❌ Error: ${data.error}`);
     }

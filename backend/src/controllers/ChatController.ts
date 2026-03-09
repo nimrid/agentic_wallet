@@ -26,14 +26,14 @@ export class ChatController {
         const balance = await getBalance(this.state.connection, this.state.wallet.publicKey);
         const mSolBalance = await getMSolBalance(this.state.connection, this.state.wallet);
 
-        const usdcBalance = await getTokenBalance(this.state.connection, this.state.wallet.publicKey, '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU');
-        const devUsdcBalance = await getTokenBalance(this.state.connection, this.state.wallet.publicKey, 'BRjpCHtyQLNCo8gqRUr8jtdAj5AjPYQaoqbvcZiHok1k');
+        const balCircle = await getTokenBalance(this.state.connection, this.state.wallet.publicKey, '4zMMC9srt5Ri5X14GAgXhaHii3GnPAEERYPJgZJDncDU');
+        const balSolend = await getTokenBalance(this.state.connection, this.state.wallet.publicKey, 'zVzi5VAf4qMEwzv7NXECVx5v2pQ7xnqVVjCXZwS9XzA');
 
         if (lowerMessage.includes('balance') || lowerMessage.includes('check')) {
             return {
                 type: 'info',
-                message: `Your wallet balance:\n• SOL: ${balance.toFixed(4)}\n• mSOL: ${mSolBalance.toFixed(4)}\n• USDC: ${usdcBalance.toFixed(2)}\n• devUSDC: ${devUsdcBalance.toFixed(2)}`,
-                data: { balance, mSolBalance, usdcBalance, devUsdcBalance }
+                message: `Your wallet balance:\n• SOL: ${balance.toFixed(4)}\n• mSOL: ${mSolBalance.toFixed(4)}\n• USDC (Standard): ${balCircle.toFixed(2)}\n• USDC (Solend Dev): ${balSolend.toFixed(2)}`,
+                data: { balance, mSolBalance, usdcBalance: balCircle, balSolend }
             };
         }
 
@@ -113,16 +113,16 @@ export class ChatController {
             };
         }
 
-        if (lowerMessage.includes('earn') || lowerMessage.includes('yield') || lowerMessage.includes('kamino')) {
+        if (lowerMessage.includes('earn') || lowerMessage.includes('yield') || lowerMessage.includes('solend')) {
             const vaults = await getTopVaults(this.state.connection);
             return {
                 type: 'action',
                 action: 'earn',
-                message: `🤖 I can help you earn yield on Kamino. Analyzing ${vaults.length} vaults...`,
+                message: `🤖 I can help you earn yield on Solend. Analyzing ${vaults.length} vaults...`,
                 reserves: vaults.map((r: any) => ({
                     symbol: r.symbol,
-                    apy: (r.apy * 100).toFixed(2),
-                    totalDeposits: parseFloat(r.tvl || 0).toLocaleString()
+                    apy: (r.supplyApy * 100).toFixed(2),
+                    totalDeposits: '$' + ((r.tvlUsd || 0) / 1_000_000).toFixed(1) + 'M'
                 }))
             };
         }

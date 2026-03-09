@@ -127,7 +127,7 @@ export async function getAIDepositAmount(
     solBalance: number
 ): Promise<number> {
     const maxAmount = Math.min(solBalance * 0.5, 2.0); // Strict safety limit: 2 SOL
-    const prompt = `You are a DeFi lending AI agent. Decide how much SOL to deposit into Kamino for this reserve.
+    const prompt = `You are a DeFi lending AI agent. Decide how much SOL to deposit into Solend for this reserve.
 
 Reserve: ${reserveSymbol}
 Your SOL Balance: ${solBalance.toFixed(4)} SOL
@@ -161,7 +161,7 @@ export async function selectBestReserve(
             return `${idx + 1}. ${reserve.symbol} | APY: ${apy}% | Deposits: $${deposits}`;
         }).join('\n');
 
-        const prompt = `Select the best Kamino reserve to deposit SOL for yield. Choose by number (1-${reserves.length}):
+        const prompt = `Select the best Solend reserve to deposit SOL for yield. Choose by number (1-${reserves.length}):
 
 ${reservesInfo}
 

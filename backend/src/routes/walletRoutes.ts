@@ -12,5 +12,10 @@ export const createWalletRouter = (state: AppState) => {
     router.post('/airdrop', controller.requestAirdrop);
     router.post('/check-and-airdrop', controller.checkAndAirdrop);
 
+    // Recurring transfer routes
+    router.get('/recurring', controller.getRecurring);
+    router.post('/recurring', controller.saveRecurring);
+    router.post('/recurring/delete', controller.deleteRecurring);
+
     return router;
 };

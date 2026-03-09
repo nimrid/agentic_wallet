@@ -1,223 +1,242 @@
-import { Connection, Keypair, PublicKey, Transaction } from '@solana/web3.js';
-import Decimal from 'decimal.js';
+import { Connection, Keypair, PublicKey } from '@solana/web3.js';
+import { SolendMarket, SolendAction } from '@solendprotocol/solend-sdk';
 import { AgentChat } from '@services/chat';
+import { getTokenBalance, getBalance } from '@core/transaction';
 
-interface EarnPosition {
-  vault: string;
-  depositAmount: number;
-  apy: number;
-  tvl: number;
+const SUPPORTED_TOKENS = ['SOL', 'USDC', 'USDT'];
+
+export interface ReserveInfo {
+  symbol: string;
+  address: string;
+  mintAddress: string;
+  supplyApy: number;
+  tvlUsd: number;
+  decimals: number;
 }
 
-// Kamino devnet vault addresses - update with actual devnet vault addresses
-const KAMINO_DEVNET_VAULTS = [
-  {
-    symbol: 'SOL',
-    name: 'Solana Vault',
-    address: 'devkRngFnfp4gBc5a3LsadgbQKdPo8MSZ4prFiNSVmY', // Replace with actual devnet SOL vault
-  },
-  {
-    symbol: 'USDC',
-    name: 'USDC Vault',
-    address: 'devkRngFnfp4gBc5a3LsadgbQKdPo8MSZ4prFiNSVmY', // Replace with actual devnet USDC vault
-  },
-];
-
-export async function getAvailableVaults(connection: Connection): Promise<any[]> {
+// ─── Fetch live reserves from Solend ────────────────────────────────
+export async function getAvailableVaults(connection: Connection): Promise<ReserveInfo[]> {
   try {
-    console.log('📊 Loading Kamino devnet vaults...');
-    
-    // Return vault configs directly without trying to load from chain
-    // In production, integrate with Kamino SDK to fetch real data
-    const vaults = KAMINO_DEVNET_VAULTS.map(v => ({
-      ...v,
-      tvl: 0,
-      apy: 0.05,
-      exists: false,
-    }));
-    
-    console.log(`✅ Loaded ${vaults.length} vaults`);
-    return vaults;
-  } catch (error) {
-    console.error('Error fetching vaults:', error);
-    return [];
-  }
-}
+    console.log('📊 Fetching live Solend reserve metrics...');
+    const isDevnet = connection.rpcEndpoint.includes('devnet');
+    const env = isDevnet ? 'devnet' : 'production';
 
-export async function getTopVaults(connection: Connection): Promise<any[]> {
-  const vaults = await getAvailableVaults(connection);
-  return vaults
-    .sort((a: any, b: any) => (b.apy || 0) - (a.apy || 0))
-    .slice(0, 5);
-}
-
-export async function selectBestVault(
-  agent: AgentChat,
-  vaults: any[]
-): Promise<any> {
-  if (vaults.length === 0) {
-    throw new Error('No vaults available');
-  }
-
-  try {
-    const vaultsInfo = vaults.slice(0, 10).map((vault, idx) => {
-      const apy = (vault.apy * 100).toFixed(2);
-      return `${idx + 1}. ${vault.symbol} | APY: ${apy}% | TVL: $${parseFloat(vault.tvl).toLocaleString()}`;
-    }).join('\n');
-
-    const prompt = `Select the best vault for earning yield. Choose by number (1-${Math.min(vaults.length, 10)}):
-
-${vaultsInfo}
-
-Best = highest APY + stable asset. Respond with ONLY the number:`;
-
-    const response = await agent.chat(prompt);
-    const vaultIndex = parseInt(response.trim()) - 1;
-
-    if (isNaN(vaultIndex) || vaultIndex < 0 || vaultIndex >= Math.min(vaults.length, 10)) {
-      return vaults.reduce((best, vault) =>
-        (vault.apy || 0) > (best.apy || 0) ? vault : best
-      );
+    if (isDevnet) {
+      console.log('⚠️ Note: Solend devnet values may appear weird (as per docs)');
     }
 
-    return vaults[vaultIndex];
-  } catch (error) {
-    console.error('Error in selectBestVault:', error);
-    return vaults.reduce((best, vault) =>
-      (vault.apy || 0) > (best.apy || 0) ? vault : best
+    const market = await SolendMarket.initialize(connection, env);
+    await market.loadReserves();
+
+    const reserves: ReserveInfo[] = market.reserves
+      .filter(r => SUPPORTED_TOKENS.includes(r.config.liquidityToken.symbol))
+      .map(r => {
+        let supplyApy = 0;
+        try { supplyApy = Number(r.stats?.supplyInterestAPY) || 0; } catch (e) { }
+        if (isDevnet && Number.isNaN(supplyApy)) supplyApy = 0.05;
+
+        let tvlUsd = 0;
+        try {
+          tvlUsd = Number(r.stats?.totalDepositsWads?.toString() || 0) / 1e18;
+          if (r.config.liquidityToken.symbol === 'SOL') tvlUsd *= 150;
+          if (isDevnet && (Number.isNaN(tvlUsd) || tvlUsd === 0)) tvlUsd = 1000000;
+        } catch (e) { }
+
+
+        return {
+          symbol: r.config.liquidityToken.symbol,
+          address: r.config.address,
+          mintAddress: r.config.liquidityToken.mint,
+          supplyApy: supplyApy,
+          tvlUsd: tvlUsd,
+          decimals: r.config.liquidityToken.decimals,
+        };
+      })
+      .sort((a, b) => b.supplyApy - a.supplyApy);
+
+    console.log(`✅ Loaded ${reserves.length} live Solend reserves`);
+    reserves.forEach(r =>
+      console.log(`   ${r.symbol}: ${(r.supplyApy * 100).toFixed(2)}% APY, $${r.tvlUsd.toLocaleString()} TVL`)
     );
+
+    return reserves;
+  } catch (error) {
+    console.error('⚠️ Solend API error, using hardcoded fallback:', error);
+    return [
+      {
+        symbol: 'SOL',
+        address: '',
+        mintAddress: '',
+        supplyApy: 0.045,
+        tvlUsd: 250_000_000,
+        decimals: 9
+      },
+      {
+        symbol: 'USDC',
+        address: '',
+        mintAddress: '',
+        supplyApy: 0.011,
+        tvlUsd: 280_000_000,
+        decimals: 6
+      },
+    ];
   }
 }
 
-export async function getAIDepositAmount(
-  agent: AgentChat,
-  vaultSymbol: string,
-  solBalance: number
-): Promise<number> {
-  const maxAmount = Math.min(solBalance * 0.3, 2);
+export async function getTopVaults(connection: Connection): Promise<ReserveInfo[]> {
+  return (await getAvailableVaults(connection)).slice(0, 5);
+}
 
-  const prompt = `You are an earning AI agent. Decide how much SOL to deposit into Kamino ${vaultSymbol} vault.
+// ─── AI: pick best reserve based on user's actual token balances ──────────────
+export async function selectBestVault(
+  agent: AgentChat,
+  vaults: ReserveInfo[],
+  wallet: PublicKey,
+  connection: Connection
+): Promise<ReserveInfo> {
+  if (vaults.length === 0) throw new Error('No reserves available');
+
+  const solBalance = await getBalance(connection, wallet);
+  const vaultsWithBalances = await Promise.all(vaults.map(async (v) => {
+    let bal = 0;
+    if (v.symbol === 'SOL') {
+      bal = solBalance;
+    } else if (v.mintAddress) {
+      bal = await getTokenBalance(connection, wallet, v.mintAddress);
+    }
+    return { ...v, balance: bal };
+  }));
+
+  const vaultsInfo = vaultsWithBalances.map((v, idx) => {
+    const decimals = v.symbol === 'SOL' ? 4 : 2;
+    const canAfford = v.symbol === 'SOL' ? v.balance >= 0.1 : v.balance >= 1;
+    return `${idx + 1}. ${v.symbol} | APY: ${(v.supplyApy * 100).toFixed(2)}% | TVL: $${v.tvlUsd.toLocaleString()} | You have ${v.balance.toFixed(decimals)} ${v.symbol}${canAfford ? '' : ' ⚠️ TOO LOW'}`;
+  }).join('\n');
+
+  const prompt = `You are a DeFi yield AI. Select the best Solend reserve based on user balance and APY.
+
+Available Reserves:
+${vaultsInfo}
 
 Your SOL Balance: ${solBalance.toFixed(4)} SOL
-Recommended Range: 0.1 to ${maxAmount.toFixed(4)} SOL
 
-Consider:
-- Don't use all your balance, keep some for other operations
-- Start with a reasonable amount
-- Typical range is 0.1 to 1 SOL
+Rules:
+- SOL reserve → deposit SOL (need ≥ 0.1, keep 0.05 for fees)
+- USDC/USDT reserve → deposit tokens (need ≥ 1 in that specific reserve mint)
+- Do NOT select ⚠️ TOO LOW reserves
+- Higher APY is better if balance allows
 
-Respond with ONLY a number (e.g., 0.5):`;
+Reply with ONLY the number:`;
 
-  const response = await agent.chat(prompt);
-  const amount = parseFloat(response.trim());
-
-  if (isNaN(amount) || amount <= 0 || amount > maxAmount) {
-    return Math.min(0.3, maxAmount);
+  try {
+    const response = await agent.chat(prompt);
+    const idx = parseInt(response.trim()) - 1;
+    if (!isNaN(idx) && idx >= 0 && idx < vaults.length) {
+      console.log(`🤖 AI selected: ${vaults[idx].symbol} reserve`);
+      return vaults[idx];
+    }
+  } catch (e) {
+    console.error('AI vault selection fallback:', e);
   }
 
-  return amount;
+  // Fallback: highest APY with enough balance
+  return vaultsWithBalances
+    .filter(v => v.symbol === 'SOL' ? v.balance >= 0.1 : v.balance >= 1)
+    .sort((a, b) => b.supplyApy - a.supplyApy)[0] ?? vaults[0];
 }
 
+// ─── AI: decide deposit amount for the chosen reserve's token ────────────────
+export async function getAIDepositAmountForReserve(
+  agent: AgentChat,
+  reserve: ReserveInfo,
+  walletAddress: PublicKey,
+  connection: Connection
+): Promise<{ amount: number; token: string }> {
+  const isSOL = reserve.symbol === 'SOL';
+  const token = reserve.symbol;
+  const balance = isSOL ? (await getBalance(connection, walletAddress)) : (await getTokenBalance(connection, walletAddress, reserve.mintAddress));
+  const solBalance = isSOL ? balance : (await getBalance(connection, walletAddress));
+  
+  const maxAmount = isSOL
+    ? Math.min((solBalance - 0.05) * 0.3, 2.0)
+    : Math.min(balance * 0.5, 100);
+
+  if (maxAmount <= 0) return { amount: 0, token };
+
+  const prompt = `Decide how much ${token} to deposit into Solend ${token} Reserve (${(reserve.supplyApy * 100).toFixed(2)}% APY).
+
+${token} Balance: ${balance.toFixed(isSOL ? 4 : 2)} ${token}
+Max deposit: ${maxAmount.toFixed(isSOL ? 4 : 2)} ${token}
+${isSOL ? 'Keep at least 0.05 SOL for gas.' : ''}
+Conservative range: ${isSOL ? '0.1–0.5 SOL' : '5–20 USDC'}
+
+Respond with ONLY a number:`;
+
+  try {
+    const response = await agent.chat(prompt);
+    const amount = parseFloat(response.trim());
+    if (!isNaN(amount) && amount > 0 && amount <= maxAmount) {
+      return { amount, token };
+    }
+  } catch { /* fallback */ }
+
+  return { amount: isSOL ? Math.min(0.2, maxAmount) : Math.min(10, maxAmount), token };
+}
+
+// ─── Execute real or simulated Solend deposit ────────────────────────────────
 export async function depositToVault(
   connection: Connection,
   wallet: Keypair,
-  vaultAddress: string,
+  reserve: ReserveInfo,
   depositAmount: number
-): Promise<any> {
+): Promise<{ signature: string; token: string; amount: number; isSimulated?: boolean }> {
+  console.log(`🚀 Preparing ${depositAmount} ${reserve.symbol} deposit into Solend...`);
+
+  const isDevnet = connection.rpcEndpoint.includes('devnet');
+  const env = isDevnet ? 'devnet' : 'production';
+
   try {
-    console.log(`🚀 Depositing ${depositAmount} tokens to Kamino vault...`);
-    console.log(`✅ Found vault: ${vaultAddress}`);
-    console.log(`📝 Building deposit instruction...`);
-    console.log(`💰 Deposit amount: ${depositAmount} tokens`);
-    console.log(`🔄 Preparing transaction...`);
+    const scaledAmount = Math.floor(depositAmount * Math.pow(10, reserve.decimals)).toString();
 
-    // In production, use Kamino SDK to build deposit instruction
-    // For now, return prepared transaction data
-    const sig = 'devnet_' + Math.random().toString(36).substring(7);
+    const solendAction = await SolendAction.buildDepositTxns(
+      connection,
+      scaledAmount,
+      reserve.symbol,
+      wallet.publicKey,
+      env
+    );
 
-    console.log(`✅ Deposit prepared: ${sig}`);
-    return {
-      signature: sig,
-      vault: vaultAddress,
-      amount: depositAmount,
-      status: 'prepared',
+    let finalSig = '';
+    const sendTransaction = async (txn: any, connection: Connection) => {
+      txn.recentBlockhash = (await connection.getLatestBlockhash()).blockhash;
+      txn.feePayer = wallet.publicKey;
+
+      txn.sign(wallet);
+      const signature = await connection.sendRawTransaction(txn.serialize());
+      await connection.confirmTransaction(signature);
+      finalSig = signature;
+      return signature;
     };
+
+    await solendAction.sendTransactions(sendTransaction);
+
+    console.log(`✅ Solend deposit confirmed: ${finalSig}`);
+    return { signature: finalSig, token: reserve.symbol, amount: depositAmount, isSimulated: false };
   } catch (error) {
-    console.error('Error depositing to vault:', error);
+    console.error('Solend transaction failed:', error);
     throw error;
-  }
-}
-
-export async function withdrawFromVault(
-  connection: Connection,
-  wallet: Keypair,
-  vaultAddress: string,
-  shareAmount: number
-): Promise<any> {
-  try {
-    console.log(`🚀 Withdrawing ${shareAmount} shares from Kamino vault...`);
-    console.log(`✅ Found vault: ${vaultAddress}`);
-    console.log(`📝 Building withdraw instruction...`);
-    console.log(`💰 Withdraw shares: ${shareAmount}`);
-    console.log(`🔄 Preparing transaction...`);
-
-    // In production, use Kamino SDK to build withdraw instruction
-    // For now, return prepared transaction data
-    const sig = 'devnet_' + Math.random().toString(36).substring(7);
-
-    console.log(`✅ Withdrawal prepared: ${sig}`);
-    return {
-      signature: sig,
-      vault: vaultAddress,
-      shares: shareAmount,
-      status: 'prepared',
-    };
-  } catch (error) {
-    console.error('Error withdrawing from vault:', error);
-    throw error;
-  }
-}
-
-export async function getUserVaultPositions(
-  connection: Connection,
-  wallet: Keypair
-): Promise<EarnPosition[]> {
-  try {
-    console.log('📊 Fetching user vault positions...');
-    
-    // In production, query user's share balance from vault
-    // For now, return empty positions
-    return [];
-  } catch (error) {
-    console.error('Error fetching user earnings:', error);
-    return [];
   }
 }
 
 export async function getEarningsStats(connection: Connection): Promise<any> {
   try {
     const vaults = await getAvailableVaults(connection);
-    
-    if (vaults.length === 0) {
-      return { totalTVL: 0, avgAPY: 0, vaultCount: 0 };
-    }
-
-    const totalTVL = vaults.reduce(
-      (sum: number, vault: any) => sum + parseFloat(vault.tvl || 0),
-      0
-    );
-
-    const avgAPY =
-      vaults.reduce((sum: number, vault: any) => sum + (vault.apy || 0), 0) /
-      vaults.length;
-
-    return {
-      totalTVL,
-      avgAPY,
-      vaultCount: vaults.length,
-    };
-  } catch (error) {
-    console.error('Error fetching earnings stats:', error);
+    if (!vaults.length) return { totalTVL: 0, avgAPY: 0, vaultCount: 0 };
+    const totalTVL = vaults.reduce((s, v) => s + v.tvlUsd, 0);
+    const avgAPY = vaults.reduce((s, v) => s + v.supplyApy, 0) / vaults.length;
+    return { totalTVL, avgAPY, vaultCount: vaults.length };
+  } catch {
     return { totalTVL: 0, avgAPY: 0, vaultCount: 0 };
   }
 }
+
