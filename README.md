@@ -236,6 +236,3 @@ Pull requests welcome! When adding new DeFi integrations:
 
 ---
 
-## 📜 License
-
-MIT
